@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 23.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="b47d45d9-1e13-41a0-b08e-d7f8586c1f85"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 1152 1152"
+	 style="enable-background:new 0 0 1152 1152;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#F90025;}
+	.st1{fill:#8D0017;}
+	.st2{fill:#C20020;}
+	.st3{font-family:'AdobeClean-Black';}
+	.st4{font-size:150px;}
+</style>
+<title>AdobeExperiencePlatformColor_Dark24@2x</title>
+<path class="st0" d="M1074.8,288v576L843.3,730.3C762,683.4,694.5,615.9,647.6,534.6L1074.8,288z"/>
+<path class="st1" d="M1074.8,288L647.6,534.6c-47-81.3-71.7-173.5-71.6-267.3V0L1074.8,288z"/>
+<path class="st2" d="M576,0v267.4c0,93.8-24.7,186-71.6,267.2L77.2,288L576,0z"/>
+<path class="st0" d="M504.3,534.6C457.5,615.8,390.1,683.2,309,730.1l-0.4,0.2L77.2,864V288L504.3,534.6z"/>
+<path class="st2" d="M1074.8,864L576,1152V658.7c93.9,0,186.1,24.7,267.3,71.6L1074.8,864z"/>
+<path class="st1" d="M576,658.7V1152L77.2,864l231.5-133.7C389.9,683.4,482.1,658.7,576,658.7z"/>
+<text transform="matrix(1 0 0 1 437.0708 823)"><tspan x="0" y="0" class="st3 st4">AEP</tspan><tspan x="-64.7" y="180" class="st3 st4">Demo</tspan></text>
+</svg>
