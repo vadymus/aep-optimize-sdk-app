@@ -33,12 +33,15 @@ extension Notification.Name {
 struct AEPSDKManager {
     
     static var decisionScopesToPrefetch = [
-        DecisionScope(name: "sdk-demo-1"),///XT activity "Mobile AEP SDK - Prefetch POC - 1": delivers JSON offer with an image, targets AAM audience or falls back to All Visitors
-        DecisionScope(name: "sdk-demo-2"),///XT activity "Mobile AEP SDK - Prefetch POC - 2": delivers JSON offer with a message, targets AAM audience or falls back to All Visitors
+        //DecisionScope(name: "sdk-demo-1"),///XT activity "Mobile AEP SDK - Prefetch POC - 1": delivers JSON offer with an image, targets AAM audience or falls back to All Visitors
+        //DecisionScope(name: "sdk-demo-2"),///XT activity "Mobile AEP SDK - Prefetch POC - 2": delivers JSON offer with a message, targets AAM audience or falls back to All Visitors
         ///DecisionScope(name: "sdk-demo-3"),//temporarily test 3 A4T with prefetched JSON offers (named "Mobile AEP SDK - Pref A4T A/B POC - Part 1/2/3")
-        DecisionScope(name: "pref-a4t-location-1"),
+        /*DecisionScope(name: "pref-a4t-location-1"),
         DecisionScope(name: "pref-a4t-location-2"),
-        DecisionScope(name: "pref-a4t-location-3")
+        DecisionScope(name: "pref-a4t-location-3")*/
+//        DecisionScope(name: "sdk-demo-6") // A/B activity 
+        DecisionScope(name: "optimize-test"),
+        DecisionScope(name: "optimize-test-2")
     ] as [DecisionScope]
     static var isContentPrefetched = false
     static var userMembershipLevel = "" // <empty>, gold, or platinum
@@ -59,7 +62,8 @@ struct AEPSDKManager {
         
         // example of getting AEP identifiers
         collectAEPIdentifiers { resultDict in
-            if let locationHint = resultDict["locationHint"], let ecid = resultDict["ecid"] {
+            if let locationHint = resultDict["locationHint"], 
+                let ecid = resultDict["ecid"] {
                 print("Location Hint: \(locationHint), ECID: \(ecid)")
             } else {
                 print("Error fetching AEP Identifiers")
@@ -68,11 +72,22 @@ struct AEPSDKManager {
 
         
         Optimize.clearCachedPropositions()
-        Optimize.updatePropositions(for: decisionScopesToPrefetch, withXdm: getXdmData(forKey: .GlobalPage))
-        /// Note: Optimize SDK will add callback for updatePropositions soon
-        /// Notify all listeners when content arrives. Safe to call `getPropositions` even if call is in progress as there are internal SDK queues waiting for call to be done
-        isContentPrefetched = true
-        NotificationCenter.default.post(name: .propositionsPrefetched, object: nil)
+        //Optimize.updatePropositions(for: decisionScopesToPrefetch, withXdm: getXdmData(forKey: .GlobalPage))
+        
+        print("optimize-test: will prefetch now")
+        
+        Optimize.updatePropositions(for: decisionScopesToPrefetch, withXdm: getXdmData(forKey: .GlobalPage), andData: [:], { decisionPropositions, error in
+            /// Notify all listeners when content arrives. Safe to call `getPropositions` even if call is in progress as there are internal SDK queues waiting for call to be done
+            
+            print("optimize-test: did prefetch now")
+            
+            isContentPrefetched = true
+            NotificationCenter.default.post(name: .propositionsPrefetched, object: nil)
+        })
+            
+            
+        
+        
     }
 
     
@@ -95,7 +110,7 @@ struct AEPSDKManager {
                     if rawLocations.count > 0 {
                         let newLocations = rawLocations.components(separatedBy: "|")
                         if newLocations.count > 0 {
-                            result.append(contentsOf: newLocations)
+                            //result.append(contentsOf: newLocations)
                         }
                     }
                 }
@@ -106,6 +121,12 @@ struct AEPSDKManager {
 
 
     static func getXdmData (forKey key:PageName) -> [String:Any]{
+        
+        let identityMap = IdentityMap()
+        identityMap.add(item: IdentityItem(id: "B1207C2E-B809-45E3-8F98-070CD17CD12A", authenticatedState: .ambiguous, primary: false), withNamespace: "FPID")
+        Identity.updateIdentities(with: identityMap)
+
+        
         // Create Experience Event from dictionary:
         var xdmData : [String: Any] = ["eventType" : "SampleXDMEvent",
                                       "sample": "data"]
@@ -143,6 +164,8 @@ struct AEPSDKManager {
         if let proposition:OptimizeProposition = propositions[DecisionScope(name: decisionScope)],
            !proposition.offers.isEmpty{
         
+            print("proposition analyticsToken \(String(describing: (proposition.scopeDetails["characteristics"] as! [String: Any])["analyticsToken"]))")
+            
             proposition.offers.forEach{ offer in
 
                 offer.displayed() // Notification to Edge

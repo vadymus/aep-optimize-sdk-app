@@ -97,10 +97,10 @@ class ViewController: UIViewController, NSURLConnectionDelegate {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        let delay = DispatchTimeInterval.seconds(3)
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            self.simulateSimultaneousPersonalizationCalls()
-        }
+//        let delay = DispatchTimeInterval.seconds(3)
+//        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+//            self.simulateSimultaneousPersonalizationCalls()
+//        }
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -163,17 +163,52 @@ extension ViewController{
      */
     @objc func renderPrefetchedPropositions(){
 
-        
+        //print("optimize-test: will be calling props")
         if AEPSDKManager.isContentPrefetched{
             
             // Change banner
             var decisionScopes = [DecisionScope]()
-            for scope in ["sdk-demo-1","sdk-demo-2","pref-a4t-location-1","pref-a4t-location-2","pref-a4t-location-3"]{
+            for scope in ["optimize-test-2"
+                //"sdk-demo-1","sdk-demo-2"
+            //              ,"pref-a4t-location-1","pref-a4t-location-2","pref-a4t-location-3"
+            ]{
                 decisionScopes.append(DecisionScope(name: scope))
             }
             Optimize.getPropositions(for: decisionScopes) { propositionsDict, error in
                 //print("prefetched content (sdk-demo-1) \(String(describing: propositionsDict))")
                 if error == nil, let propositions = propositionsDict{
+                    
+                    print("optimize-test: inside getPropositions. about to call optimize-test scope with props \(propositions)")
+                    
+                    if let proposition:OptimizeProposition = propositions[DecisionScope(name: "optimize-test-2")],
+                       !proposition.offers.isEmpty{
+                        proposition.offers.forEach{ offer in
+                            offer.displayed() // Notification to Edge
+                            // Process Target response
+                            print("optimize-test: proposition offer content: \(String(describing: offer.content))")
+                            DispatchQueue.main.async {
+                                
+                                if let data = offer.content.data(using: .utf8) {
+                                    do {
+                                        let attributedString = try NSAttributedString(
+                                            data: data,
+                                            options: [
+                                                .documentType: NSAttributedString.DocumentType.html,
+                                                .characterEncoding: String.Encoding.utf8.rawValue
+                                            ],
+                                            documentAttributes: nil
+                                        )
+                                        
+                                        self.messageLabel.attributedText = attributedString
+                                        
+                                    } catch {
+                                        print("Failed to create attributed string: \(error)")
+                                    }
+                                }
+                                
+                            }
+                        }
+                    }
                     
                     // Update Home page image
                     if let image = AEPSDKManager.getValueFromPropositions(for: "image", decisionScope: "sdk-demo-1", propositions: propositions){
@@ -215,6 +250,13 @@ extension ViewController{
                                 }
                                 self.homeImage?.load(url: URL(string: bannerUrl)!)
                             }
+                    }
+                    
+                    // Read Home page exp
+                    if let abTestValue = AEPSDKManager.getValueFromPropositions(for: "exp", decisionScope: "sdk-demo-6", propositions: propositions),
+                       abTestValue.count > 0 {
+                            print("Target A/B exp is: \(abTestValue)")
+                            
                     }
                    
                 }

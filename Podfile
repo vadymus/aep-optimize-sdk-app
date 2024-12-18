@@ -7,8 +7,12 @@ target 'AEP-Optimize' do
   pod 'AEPEdgeConsent', '~> 5.0'
   pod 'AEPEdgeIdentity', '~> 5.0'
   pod 'AEPAssurance', '~> 5.0'
+  
   pod 'AEPEdge', '~> 5.0'
-  pod 'AEPOptimize', '~> 5.0'
+  pod 'AEPOptimize', '~> 5.2'
+  # pod 'AEPOptimize', :git => 'https://github.com/adobe/aepsdk-optimize-ios.git', :branch => 'dev-v5.0.2' # or specify :tag if needed
+#  pod 'AEPOptimize', :git => 'https://github.com/akhiljain1907/aepsdk-optimize-ios.git', :branch => 'fix/preview'
+
   pod 'AEPCore', '~> 5.0'
   pod 'AEPIdentity', '~> 5.0'
   pod 'AEPSignal', '~>5.0'

@@ -89,7 +89,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // Prefetch Target Locations on App Re-Entry
         AEPSDKManager.isContentPrefetched = false //clear old load
-        //AEPSDKManager.prefetchLocations()
+        AEPSDKManager.prefetchScopes()
         
     }
 
@@ -103,13 +103,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -> Bool {
         print("url= \(String(describing: url.absoluteString))")
-        //ex: url= com.adobe.optimize://?at_preview_token=mhFIzJSF7JWb-RsnakpBqlvOU5dAZxljCIJxLpNdtiw&at_preview_index=1_1&at_preview_listed_activities_only=true&at_preview_evaluate_as_true_audience_ids=7356277
-        
-        // Called when the app in background is opened with a deep link.
-        // Start the Assurance session and go to https://experience.adobe.com/#/@atag/data-collection/assurance
-        Assurance.startSession(url: url)
-        
-        
+        //ex: NOT SURE THIS WORKS url= com.adobe.optimize://?at_preview_token=mhFIzJSF7JWb-RsnakpBqlvOU5dAZxljCIJxLpNdtiw&at_preview_index=1_1&at_preview_listed_activities_only=true&at_preview_evaluate_as_true_audience_ids=7356277
+        //ex: https://com.adobe.optimize/?adb_validation_sessionid=3b954ca9-8bf0-46ca-9a82-7e074add9f21
         
         AEPSDKManager.appEntryUrlParameters = [:]
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
@@ -118,15 +113,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 AEPSDKManager.appEntryUrlParameters[item.name] = item.value!
             }
         }
+        AEPSDKManager.appEntryUrlParameters["adb_deeplink"] = url.absoluteString
         print("URL is parsed: \(AEPSDKManager.appEntryUrlParameters)")
         
-        //Assurance.startSession(url: url)
-        
-        // AEP SDK deep linking/preview
+        // AEP SDK deep linking
         if url.scheme == "com.adobe.optimize"{
             
-            //AEPTarget.setPreviewRestartDeeplink(url) // preview selections
-            MobileCore.collectLaunchInfo(["adb_deeplink":url.absoluteString]) // preview mode
+            // Called when the app in background is opened with a deep link.
+            // Start the Assurance session and go to AEP UI to view session details
+            Assurance.startSession(url: url)
+            
+            MobileCore.collectLaunchInfo(AEPSDKManager.appEntryUrlParameters) // collect info
             print("in application:app:url:options \(url)")
             return true
         }
@@ -137,7 +134,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         let launchIds = [
             "22bf1a13013f/f5dd2c39eb71/launch-8fbe6b4d2f3e-development", //EE Dev
-            "164e49a27fff/a3823dd6bd3f/launch-cb0342285348-development"  //AGS300 Dev (Optimize)
+            "164e49a27fff/a3823dd6bd3f/launch-cb0342285348-development",  //AGS300 Dev (Optimize)
+            "3149c49c3910/d50a43685de2/launch-c6dde50fb72c-development" //AEM Assets Departmental - Campaign
         ]
         
         DispatchQueue.main.async {
@@ -157,7 +155,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 Signal.self
             ]
             MobileCore.registerExtensions(extensions, {
-                MobileCore.configureWith(appId: launchIds[1])
+                MobileCore.configureWith(appId: launchIds[2])
                 
                 //Indicates how long, in seconds, Places membership information for the device will remain valid. Default value of 3600 (seconds in an hour).
                 // [N/A???] MobileCore.updateConfigurationWith(configDict: ["places.membershipttl" : 1800])

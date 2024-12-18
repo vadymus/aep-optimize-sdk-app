@@ -22,8 +22,34 @@ public extension Optimize {
     /// - Parameter decisionScopes: An array of decision scopes.
     /// - Parameter xdm: Additional XDM-formatted data to be sent in the personalization request.
     /// - Parameter data: Additional free-form data to be sent in the personalization request.
+    @available(*, deprecated, message: "This API is deprecated. Use `updatePropositions(for:withXdm:andData:completion:)` instead.")
     @objc(updatePropositions:withXdm:andData:)
     static func updatePropositions(for decisionScopes: [DecisionScope], withXdm xdm: [String: Any]?, andData data: [String: Any]? = nil) {
+        updatePropositions(for: decisionScopes, withXdm: xdm, andData: data, nil)
+    }
+
+    /// This API dispatches an Event for the Edge network extension to fetch decision propositions for the provided decision scopes from the decisioning Services enabled behind Experience Edge.
+    ///
+    /// The returned decision propositions are cached in memory in the Optimize SDK extension and can be retrieved using `getPropositions(for:_:)` API.
+    /// - Parameter decisionScopes: An array of decision scopes.
+    /// - Parameter xdm: Additional XDM-formatted data to be sent in the personalization request.
+    /// - Parameter data: Additional free-form data to be sent in the personalization request.
+    /// - Parameter completion: Optional completion handler invoked with map of successful decision scopes to propositions and errors, if any
+    @objc(updatePropositions:withXdm:andData:completion:)
+    static func updatePropositions(for decisionScopes: [DecisionScope], withXdm xdm: [String: Any]?, andData data: [String: Any]? = nil, _ completion: (([DecisionScope: OptimizeProposition]?, Error?) -> Void)? = nil) {
+        updatePropositions(for: decisionScopes, withXdm: xdm, andData: data, timeout: OptimizeConstants.DEFAULT_TIMEOUT, completion)
+    }
+
+    /// This API dispatches an Event for the Edge network extension to fetch decision propositions for the provided decision scopes from the decisioning Services enabled behind Experience Edge.
+    ///
+    /// The returned decision propositions are cached in memory in the Optimize SDK extension and can be retrieved using `getPropositions(for:_:)` API.
+    /// - Parameter decisionScopes: An array of decision scopes.
+    /// - Parameter xdm: Additional XDM-formatted data to be sent in the personalization request.
+    /// - Parameter data: Additional free-form data to be sent in the personalization request.
+    /// - Parameter timeout: Timeout for the event.
+    /// - Parameter completion: Optional completion handler invoked with map of successful decision scopes to propositions and errors, if any
+    @objc(updatePropositions:withXdm:timeout:andData:completion:)
+    static func updatePropositions(for decisionScopes: [DecisionScope], withXdm xdm: [String: Any]?, andData data: [String: Any]? = nil, timeout: TimeInterval, _ completion: (([DecisionScope: OptimizeProposition]?, Error?) -> Void)? = nil) {
         let flattenedDecisionScopes = decisionScopes
             .filter { $0.isValid }
             .compactMap { $0.asDictionary() }
@@ -31,6 +57,8 @@ public extension Optimize {
         guard !flattenedDecisionScopes.isEmpty else {
             Log.warning(label: OptimizeConstants.LOG_TAG,
                         "Cannot update propositions, provided decision scopes array is empty or has invalid items.")
+            let aepOptimizeError = AEPOptimizeError.createAEPOptimizInvalidRequestError()
+            completion?(nil, aepOptimizeError)
             return
         }
 
@@ -38,7 +66,6 @@ public extension Optimize {
             OptimizeConstants.EventDataKeys.REQUEST_TYPE: OptimizeConstants.EventDataValues.REQUEST_TYPE_UPDATE,
             OptimizeConstants.EventDataKeys.DECISION_SCOPES: flattenedDecisionScopes
         ]
-
         // Add XDM data
         if let xdm = xdm {
             eventData[OptimizeConstants.EventDataKeys.XDM] = xdm
@@ -49,12 +76,21 @@ public extension Optimize {
             eventData[OptimizeConstants.EventDataKeys.DATA] = data
         }
 
+        eventData[OptimizeConstants.EventDataKeys.TIMEOUT] = timeout
         let event = Event(name: OptimizeConstants.EventNames.UPDATE_PROPOSITIONS_REQUEST,
                           type: EventType.optimize,
                           source: EventSource.requestContent,
                           data: eventData)
-
-        MobileCore.dispatch(event: event)
+        MobileCore.dispatch(event: event, timeout: timeout) { responseEvent in
+            guard let responseEvent = responseEvent else {
+                let timeoutError = AEPOptimizeError.createAEPOptimizeTimeoutError()
+                completion?(nil, timeoutError)
+                return
+            }
+            let result = responseEvent.data?[OptimizeConstants.EventDataKeys.PROPOSITIONS] as? [DecisionScope: OptimizeProposition]
+            let error = responseEvent.data?[OptimizeConstants.EventDataKeys.RESPONSE_ERROR] as? AEPOptimizeError
+            completion?(result, error)
+        }
     }
 
     /// This API retrieves the previously fetched decisions for the provided decision scopes from the in-memory extension cache.
@@ -65,6 +101,18 @@ public extension Optimize {
     ///   - completion: The completion handler to be invoked when the decisions are retrieved from cache.
     @objc(getPropositions:completion:)
     static func getPropositions(for decisionScopes: [DecisionScope], _ completion: @escaping ([DecisionScope: OptimizeProposition]?, Error?) -> Void) {
+        getPropositions(for: decisionScopes, timeout: OptimizeConstants.DEFAULT_TIMEOUT, completion)
+    }
+
+    /// This API retrieves the previously fetched decisions for the provided decision scopes from the in-memory extension cache.
+    ///
+    /// The completion handler will be invoked with the decision propositions corresponding to the given decision scopes. If a certain decision scope has not already been fetched prior to this API call, it will not be contained in the returned propositions.
+    /// - Parameters:
+    ///   - decisionScopes: An array of decision scopes.
+    ///   - timeout: Timeout for the event.
+    ///   - completion: The completion handler to be invoked when the decisions are retrieved from cache.
+    @objc(getPropositions:timeout:completion:)
+    static func getPropositions(for decisionScopes: [DecisionScope], timeout: TimeInterval, _ completion: @escaping ([DecisionScope: OptimizeProposition]?, Error?) -> Void) {
         let flattenedDecisionScopes = decisionScopes
             .filter { $0.isValid }
             .compactMap { $0.asDictionary() }
@@ -86,15 +134,14 @@ public extension Optimize {
                           source: EventSource.requestContent,
                           data: eventData)
 
-        // Increase timeout to 10s to ensure prior update propositions requests have enough time to complete.
-        MobileCore.dispatch(event: event, timeout: 10) { responseEvent in
+        MobileCore.dispatch(event: event, timeout: timeout) { responseEvent in
             guard let responseEvent = responseEvent else {
                 completion(nil, AEPError.callbackTimeout)
                 return
             }
 
-            if let error = responseEvent.data?[OptimizeConstants.EventDataKeys.RESPONSE_ERROR] as? AEPError {
-                completion(nil, error)
+            if let error = responseEvent.data?[OptimizeConstants.EventDataKeys.RESPONSE_ERROR] as? AEPOptimizeError {
+                completion(nil, error.aepError)
                 return
             }
 
